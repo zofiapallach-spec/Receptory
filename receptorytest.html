@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test – Receptory i neurotransmitery</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    font-family: Georgia, serif;
+    color: #e2e8f0;
+    padding-bottom: 60px;
+  }
+  #top-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px 10px;
+    border-bottom: 1px solid rgba(148,163,184,0.1);
+  }
+  #top-left { display: flex; align-items: center; gap: 12px; }
+  #q-counter { font-size: 13px; color: #94a3b8; font-family: monospace; letter-spacing: 1px; }
+  #timer-badge {
+    font-size: 12px; color: #64748b; font-family: monospace;
+    background: rgba(255,255,255,0.04); padding: 3px 8px; border-radius: 20px;
+  }
+  #score-badge {
+    background: rgba(34,197,94,0.15); color: #4ade80;
+    padding: 4px 12px; border-radius: 20px; font-size: 13px; font-family: monospace;
+    border: 1px solid rgba(74,222,128,0.2);
+  }
+  #progress-track { height: 3px; background: rgba(255,255,255,0.06); margin-bottom: 24px; }
+  #progress-fill {
+    height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    transition: width 0.5s ease; border-radius: 2px; width: 0%;
+  }
+  #card { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+  #q-label {
+    font-size: 10px; letter-spacing: 3px; color: #6366f1; margin-bottom: 10px;
+    font-family: monospace; text-transform: uppercase;
+  }
+  #q-text { font-size: 17px; line-height: 1.6; color: #f1f5f9; margin-bottom: 24px; font-weight: 500; }
+  #options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .opt-btn {
+    display: flex; align-items: flex-start; gap: 12; text-align: left;
+    padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(148,163,184,0.15);
+    cursor: pointer; transition: all 0.2s; font-family: Georgia, serif;
+    font-size: 14px; line-height: 1.5; width: 100%;
+    background: rgba(255,255,255,0.04); color: #cbd5e1;
+  }
+  .opt-btn:disabled { cursor: default; }
+  .opt-btn.correct { background: rgba(34,197,94,0.12); border-color: #22c55e; color: #86efac; }
+  .opt-btn.wrong   { background: rgba(239,68,68,0.12);  border-color: #ef4444; color: #fca5a5; }
+  .opt-btn.dim     { background: rgba(255,255,255,0.01); border-color: rgba(148,163,184,0.06); color: #475569; }
+  .opt-letter {
+    min-width: 22px; height: 22px; display: inline-flex; align-items: center;
+    justify-content: center; border-radius: 50%;
+    background: rgba(255,255,255,0.06); font-size: 11px;
+    font-family: monospace; font-weight: 700; color: #94a3b8; flex-shrink: 0; margin-top: 1px;
+  }
+  .opt-text { flex: 1; }
+  .opt-mark { margin-left: 6px; font-weight: 700; }
+  .opt-mark.ok { color: #4ade80; }
+  .opt-mark.no { color: #f87171; }
+  #explanation {
+    background: rgba(99,102,241,0.08); border-left: 3px solid #6366f1;
+    border-radius: 0 8px 8px 0; padding: 14px 16px; margin-bottom: 20px; display: none;
+  }
+  #expl-label { font-size: 11px; letter-spacing: 2px; color: #818cf8; margin-bottom: 6px; font-family: monospace; }
+  #expl-text { font-size: 13px; color: #cbd5e1; line-height: 1.6; }
+  #btn-next {
+    width: 100%; padding: 14px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border: none; border-radius: 10px; font-size: 15px;
+    font-family: Georgia, serif; cursor: pointer; font-weight: 600; letter-spacing: 0.5px;
+    display: none; margin-top: 4px;
+  }
+  /* Finish screen */
+  #finish { display: none; max-width: 680px; margin: 40px auto; padding: 0 16px; text-align: center; }
+  #finish-header { font-size: 11px; letter-spacing: 4px; color: #6366f1; margin-bottom: 16px; font-family: monospace; }
+  #score-big { font-size: 64px; font-weight: 700; color: #f1f5f9; line-height: 1; }
+  #score-pct { font-size: 22px; color: #94a3b8; margin: 8px 0; }
+  #score-grade { font-size: 28px; margin: 12px 0 8px; color: #818cf8; }
+  #score-time { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+  #breakdown { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 28px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  #btn-restart {
+    width: 100%; padding: 14px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border: none; border-radius: 10px; font-size: 15px;
+    font-family: Georgia, serif; cursor: pointer; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div id="top-left">
+    <span id="q-counter">1 / 30</span>
+    <span id="timer-badge">⏱ 00:00</span>
+  </div>
+  <span id="score-badge">✓ 0</span>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+
+<div id="card">
+  <div id="q-label">PYTANIE 1</div>
+  <div id="q-text"></div>
+  <div id="options"></div>
+  <div id="explanation">
+    <div id="expl-label">💡 WYJAŚNIENIE</div>
+    <div id="expl-text"></div>
+  </div>
+  <button id="btn-next" onclick="nextQ()">Następne pytanie →</button>
+</div>
+
+<div id="finish">
+  <div id="finish-header">WYNIK KOŃCOWY</div>
+  <div id="score-big"></div>
+  <div id="score-pct"></div>
+  <div id="score-grade"></div>
+  <div id="score-time"></div>
+  <div id="breakdown"></div>
+  <button id="btn-restart" onclick="restart()">Spróbuj ponownie</button>
+</div>
+
+<script>
+const questions = [
+  {q:"Hormony somatolaktogeniczne (hormon wzrostu i prolaktyna) oraz czynniki wzrostowe działają głównie poprzez receptory:",o:["Sprzężone z układem JAK-STAT","Wewnątrzkomórkowe","Związane z aktywnością enzymatyczną","Jądrowe","Prawidłowa a i c"],c:4,e:"Hormon wzrostu i prolaktyna działają przez receptory sprzężone z JAK-STAT (a), a czynniki wzrostowe przez receptory z aktywnością enzymatyczną (c) — stąd poprawna jest odpowiedź 'a i c'."},
+  {q:"Mianem drugiego przekaźnika określamy (cAMP, jony wapnia, IP3, cGMP):",o:["Odpowiedni hormon","'odbiorcę' na komórce docelowej","Zewnątrzkomórkowy przetwornik, wzmacniacz oraz 'tłumacz wiadomości'","Wewnątrzkomórkowy przetwornik, wzmacniacz oraz 'tłumacz wiadomości'","Receptor wewnątrzjądrowy"],c:3,e:"Drugi przekaźnik (cAMP, Ca²⁺, IP3, cGMP) to wewnątrzkomórkowy przetwornik i wzmacniacz sygnału — tłumaczy sygnał z receptora na odpowiedź komórki."},
+  {q:"Połączenie ligandu z jego specyficznym receptorem w komórce docelowej – powstanie kompleksu ligand-receptor:",o:["Blokuje receptor","Wywołuje zmiany kształtu i konformacji w obrębie receptora","Nie wpływa na błonę komórkową","Powoduje zawsze wniknięcie ligandu do komórki","Brak prawidłowej odpowiedzi"],c:1,e:"Związanie liganda wywołuje zmiany konformacyjne receptora — to kluczowy mechanizm aktywacji receptora i dalszej transdukcji sygnału."},
+  {q:"Receptorami znajdującymi się w jądrze komórkowym są receptory dla:",o:["Interleukiny-1","Hormonu wzrostu","Testosteronu","Endorfin","GABA"],c:2,e:"Receptory jądrowe posiadają hormony steroidowe (testosteron, estrogeny, kortyzol), hormony tarczycy, witamina D i kwas retinowy."},
+  {q:"Steroidy neuroaktywne tzw. neurosterydy działają aktywująco bądź hamująco, gdyż mogą być agonistami i/lub antagonistami receptorów:",o:["Opioidowych","Estrogenowych","GABA i NMDA","Kannabinoidowych","Żadnych z wymienionych"],c:2,e:"Neurosteroidy są agonistami receptorów GABA-A (działanie hamujące) i antagonistami receptorów NMDA — stąd mogą działać zarówno hamująco, jak i pobudzająco."},
+  {q:"Substancje działające hamująco na układ przywspółczulny to:",o:["Substancje działające antagonistycznie do acetylocholiny","Antagoniści receptorów muskarynowych","Agoniści receptorów muskarynowych","Antagoniści receptorów nikotynowych","Prawidłowe a i b"],c:4,e:"Hamowanie układu przywspółczulnego = blokowanie przekaźnictwa cholinergicznego. Obie odpowiedzi (a i b) są prawidłowe — antagoniści muskarynowi i substancje antagonistyczne do ACh blokują ten układ."},
+  {q:"Znajdują się one głównie w sercu i ich pobudzenie prowadzi do wzrostu częstości skurczów serca. Powyższy opis dotyczy receptorów:",o:["GABA-A","Adrenergicznych β1","Adrenergicznych β2","Adrenergicznych α","NMDA"],c:1,e:"Receptory β1-adrenergiczne zlokalizowane są głównie w sercu — ich pobudzenie powoduje wzrost częstości i siły skurczów. β2 dominuje w naczyniach i oskrzelach."},
+  {q:"Cechy ogólne charakteryzujące receptor to:",o:["Niespecyficzność, brak wysycalności, brak odwracalności","Redundacja, plejotropia, kaskadowość","Synergizm, antagonizm, konkurencja","Specyficzność, wysycalność, odwracalność","Jednorodność, specyficzność, synergizm"],c:3,e:"Receptory charakteryzują się: specyficznością (wiążą konkretny ligand), wysycalnością (ograniczona liczba miejsc wiążących) i odwracalnością (ligand może się odłączyć)."},
+  {q:"Funkcjami neurosteroidów w mózgu są wszystkie niżej wymienione, poza jedną. Wskaż którą:",o:["Wpływają bezpośrednio na neurotransmisję","Mobilizują rezerwy energetyczne w czasie głodu lub wysiłku fizycznego","Działają na kanały jonowe operowane przez ligandy (GABA-A, GABA-C, NMDA, 5HT3)","Wpływają na różnicowanie płciowe mózgu","Działają neuroprotekcyjnie, szczególnie w okresie starzenia"],c:1,e:"Mobilizacja rezerw energetycznych NIE jest funkcją neurosteroidów — to rola hormonów metabolicznych (kortyzol, adrenalina). Pozostałe funkcje są prawidłowe."},
+  {q:"Prekursorem endorfin i ACTH jest:",o:["Prodynorfina","Kortykoliberyna","Proopiomelanokortyna","Protrombina","Żadna odpowiedź nie jest prawidłowa"],c:2,e:"POMC (proopiomelanokortyna) jest wspólnym prekursorem dla β-endorfin, ACTH, MSH i innych peptydów. Prodynorfina to prekursor dynorfin."},
+  {q:"Pobudzenie receptorów opioidowych odpowiedzialne jest za (wskaż FAŁSZYWE):",o:["Działanie przeciwbólowe","Działanie przeciwlękowe","Rozszerzenie źrenicy","Działanie przeciwdrgawkowe","Działanie przeczyszczające"],c:2,e:"Opioidy powodują ZWĘŻENIE źrenicy (miozę) — nie rozszerzenie. Zwężenie źrenic jest klasycznym objawem przedawkowania opioidów."},
+  {q:"Do substancji blokujących wydzielanie acetylocholiny oraz wykazujących działanie antycholinergiczne (miorelaksacyjne) zaliczamy wszystkie za wyjątkiem:",o:["Kurara","Pavulon","Nikotyna","Sukcynylocholina","Pankuronium"],c:2,e:"Nikotyna jest AGONISTĄ receptorów nikotynowych — nie blokuje wydzielania ACh. Reszta to leki zwiotczające mięśnie."},
+  {q:"Substancje psychoaktywne blokujące wydzielanie acetylocholiny, określane mianem deliriantów, to:",o:["Morfina i kodeina","Kortyzol i testosteron","Prozac i relanium","Propranolol i pindolol","Atropina i skopolamina"],c:4,e:"Atropina i skopolamina to klasyczne delirianty — antagoniści muskarynowi blokujący ACh, powodujące stan majaczenia, halucynacje i dezorientację."},
+  {q:"Ligandy lipofilowe:",o:["Posiadają receptory we wnętrzu komórki i swobodnie przenikają przez błonę komórkową","Posiadają receptory we wnętrzu komórki, ale nie przenikają swobodnie przez błonę","Posiadają receptory na powierzchni komórki i swobodnie przenikają przez błonę","Posiadają receptory na powierzchni i nie przenikają przez błonę","Brak prawidłowej odpowiedzi"],c:0,e:"Ligandy lipofilowe (np. hormony steroidowe) są rozpuszczalne w lipidach — swobodnie przenikają przez błonę i wiążą się z receptorami wewnątrzkomórkowymi."},
+  {q:"Do receptorów powierzchniowych zaliczamy wszystkie poza jednym:",o:["Muskarynowe","NMDA","Estrogenowe","5-HT","Opioidowe"],c:2,e:"Receptory estrogenowe są JĄDROWE — estrogeny to ligandy lipofilowe. Wszystkie pozostałe (muskarynowe, NMDA, 5-HT, opioidowe) to receptory błonowe."},
+  {q:"Pobudzenie receptorów estrogenowych wywołuje efekty:",o:["Tylko nerwowe","Tylko hormonalne","Tylko behawioralne","Wszystkie powyższe","Żadne z wymienionych"],c:3,e:"Receptory estrogenowe są wszechobecne — estrogeny wywołują efekty nerwowe, hormonalne (oś HPG) i behawioralne. Stąd: wszystkie powyższe."},
+  {q:"Hormonem działającym przez receptory związane z aktywnością enzymatyczną jest 1…, natomiast hormonem działającym na receptory jądrowe jest 2…:",o:["1-insulina, 2-glukagon","1-grelina, 2-leptyna","1-oksytocyna, 2-aldosteron","1-prolaktyna, 2-testosteron","1-melatonina, 2-erytropoetyna"],c:3,e:"Prolaktyna działa przez receptory sprzężone z kinazami (JAK2) — aktywność enzymatyczna. Testosteron to hormon steroidowy → receptor jądrowy."},
+  {q:"Jon magnezowy jest blokerem receptora:",o:["AMPA","P1","mGlu1","GABA-A","NMDA"],c:4,e:"Mg²⁺ blokuje kanał jonowy receptora NMDA w sposób zależny od napięcia — kluczowy mechanizm w plastyczności synaptycznej (LTP)."},
+  {q:"Wskaż prawidłowe stwierdzenie dotyczące opioidów endogennych:",o:["Intensywny wysiłek fizyczny prowadzi do obniżenia poziomu endorfin","Opioidy endogenne są zawsze intensywnie wydzielane w trakcie reakcji stresowej","Endorfiny są hormonami rozpuszczalnymi w tłuszczach","Opioidy endogenne swobodnie przenikają przez błony komórkowe","Morfina i beta-endorfina działają poprzez ten sam układ receptorowy"],c:4,e:"Morfina i β-endorfina działają przez te same receptory μ-opioidowe. Endorfiny są peptydami (hydrofilowe) — nie przenikają swobodnie przez błony."},
+  {q:"Wskaż prawidłowe stwierdzenie dotyczące tlenku azotu (NO):",o:["Aminokwasem będącym substratem do syntezy NO jest L-alanina","Istnieje tylko jedna forma syntazy tlenku azotu","Śródbłonkowa syntaza (eNOS) wykazuje aktywność przede wszystkim w neuronach","W układzie krążenia NO jest stale syntetyzowany i tonicznie zmniejsza napięcie mięśni gładkich naczyń","Działa głównie endokrynowo"],c:3,e:"NO jest stale wydzielany przez eNOS w śródbłonku i tonicznie rozluźnia mięśnie gładkie naczyń. Substrat to L-arginina; istnieją 3 izoformy NOS; NO działa parakrynnie, nie endokrynowo."},
+  {q:"Neurosekrecja to:",o:["Tworzenie pęcherzyków synaptycznych","Wydzielanie neuroprzekaźników przez synapsy","Wydzielanie hormonów przez wyspecjalizowane komórki nerwowe","Wydzielanie i transport hormonów przez wyspecjalizowane komórki nerwowe","Wytwarzanie i wydzielanie hormonów przez nerwową część przysadki"],c:3,e:"Neurosekrecja = wydzielanie i transport hormonów przez wyspecjalizowane neurony (np. podwzgórza). Obejmuje syntezę, transport aksonalny i wydzielanie."},
+  {q:"Termin sickness behaviour wiąże się m.in. z:",o:["Promowaniem degeneracji neuronów odpowiedzialnych za reakcje emocjonalne","Obniżeniem się poziomu cytokin prozapalnych","Obniżeniem procesów sprzyjających powstawaniu miażdżycy","Obniżeniem aktywności i kumulowaniem energii","Wzrostem progu bólowego"],c:3,e:"Sickness behaviour = adaptacyjna odpowiedź na infekcję: obniżenie aktywności, senność, anoreksja, kumulowanie energii na potrzeby układu odpornościowego."},
+  {q:"Receptory nikotynowe to receptory:",o:["'wolne', metabotropowe, agonistami są muskaryna i nikotyna","'wolne', metabotropowe, agonistami są acetylocholina i nikotyna","'szybkie', jonotropowe, agonistami są acetylocholina i nikotyna","'szybkie', metabotropowe, agonistami są acetylocholina i nikotyna","'wolne', jonotropowe, agonistami są muskaryna i nikotyna"],c:2,e:"Receptory nikotynowe (nAChR) to receptory jonotropowe (kanał Na⁺/K⁺) — szybkie. Agonistami są acetylocholina i nikotyna. Receptory muskarynowe są metabotropowe (GPCR)."},
+  {q:"Do neurotransmiterów nieklasycznych zaliczamy wszystkie poza:",o:["Endokanabinoidy","Endomorfinami","Aminami katecholowymi","Gazotransmiterami","Cytokinami"],c:2,e:"Aminy katecholowe (dopamina, noradrenalina, adrenalina) to klasyczne neurotransmitery. Endokannabinoidy, gazotransmitery i cytokiny są nieklasyczne."},
+  {q:"Do neurotransmiterów związanych z przewodzeniem bólu zaliczamy:",o:["GABA, NO, substancję P, neuropeptyd Y, puryny","NO, opioidy endogenne, acetylocholinę, puryny","Aminy katecholowe, neuropeptyd Y, endokanabinoidy","Substancję P, estrogeny, opioidy endogenne","Substancję P, enkefaliny, puryny, endokanabinoidy"],c:0,e:"Wg klucza: GABA, NO, substancja P, neuropeptyd Y i puryny. Substancja P pobudza drogi wstępujące bólu, GABA i NO działają hamująco na nocycepcję, neuropeptyd Y i puryny (ATP na P2X) modulują przekaźnictwo bólowe."},
+  {q:"Neurotransmitery klasyczne są zwykle:",o:["Magazynowane w pęcherzykach postsynaptycznych i uwalniane przy udziale wapnia do szczeliny synaptycznej","Magazynowane w pęcherzykach presynaptycznych i uwalniane przy udziale wapnia do szczeliny synaptycznej","Magazynowane w pęcherzykach presynaptycznych i uwalniane przy udziale sodu do szczeliny synaptycznej","Magazynowane w pęcherzykach presynaptycznych i uwalniane przy udziale potasu do szczeliny synaptycznej","Brak prawidłowej odpowiedzi"],c:1,e:"Klasyczne neurotransmitery są magazynowane w pęcherzykach PREsynaptycznych (nie postsynaptycznych!) i uwalniane w egzocytozie zależnej od napływu Ca²⁺."},
+  {q:"Wskaż zdanie fałszywe dotyczące transdukcji sygnału:",o:["Jest procesem od którego zależy przekazanie informacji pomiędzy ligandem a efektorem wewnątrz komórki","Wzory transdukcji sygnału nie zależą od typu receptora powierzchniowego","Obejmuje trzy etapy: aktywacja domeny, transdukcja sygnału, aktywacja efektora","Wymaga udziału drugiego przekaźnika","Ważnymi elementami są: kaskada fosforylacji oraz amplifikacja sygnału"],c:1,e:"FAŁSZ: sposób transdukcji ZALEŻY od typu receptora (GPCR, RTK, JAK-STAT działają zupełnie inaczej). Każdy typ angażuje inną kaskadę sygnałową."},
+  {q:"Nalokson to:",o:["Niespecyficzny bloker receptorów opioidowych","Środek stosowany w leczeniu alkoholizmu","Antagonista morfiny","Powyższe odpowiedzi są prawidłowe","Brak prawidłowej odpowiedzi"],c:4,e:"Brak prawidłowej odpowiedzi — żadna pojedyncza opcja nie jest w pełni poprawna. (b) to naltrekson, nie nalokson; (c) prawdziwe, ale niepełne; (d) błędne, bo (b) jest fałszywe."},
+  {q:"Receptor oznaczony skrótem AMPA:",o:["Jest receptorem jonotropowym dla glicyny","Jest receptorem jonotropowym dla kwasu glutaminowego","Jest receptorem metabotropowym dla glicyny","Jest receptorem metabotropowym dla kwasu glutaminowego","Jest receptorem jonotropowym dla GABA"],c:1,e:"AMPA to jonotropowy receptor dla glutaminianu — przepuszcza głównie Na⁺/K⁺. Wraz z NMDA odpowiada za szybkie pobudzające przekaźnictwo synaptyczne."},
+  {q:"Do nadrodziny receptorów 7TM zaliczamy wszystkie poniżej wymienione za wyjątkiem:",o:["β-adrenergicznego","CB1","Insuliny","Dla endorfin","Serotoninowego"],c:2,e:"Receptor insuliny to receptor z aktywnością kinazy tyrozynowej (RTK) — NIE należy do GPCR/7TM. β-adrenergiczny, CB1, opioidowy μ i serotoninowy to receptory 7-domenowe."}
+];
+
+let shuffled = [], current = 0, score = 0, selected = null, answers = [];
+let startTime = Date.now(), timerInterval;
+
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function fmt(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  startTime = Date.now();
+  timerInterval = setInterval(() => {
+    document.getElementById('timer-badge').textContent = '⏱ ' + fmt(Math.floor((Date.now()-startTime)/1000));
+  }, 1000);
+}
+
+function render() {
+  const q = shuffled[current];
+  const total = shuffled.length;
+  document.getElementById('q-counter').textContent = (current+1) + ' / ' + total;
+  document.getElementById('score-badge').textContent = '✓ ' + score;
+  document.getElementById('progress-fill').style.width = (current/total*100) + '%';
+  document.getElementById('q-label').textContent = 'PYTANIE ' + (current+1);
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('explanation').style.display = 'none';
+  document.getElementById('btn-next').style.display = 'none';
+  selected = null;
+
+  const optDiv = document.getElementById('options');
+  optDiv.innerHTML = '';
+  q.o.forEach((opt, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.innerHTML = '<span class="opt-letter">' + String.fromCharCode(65+idx) + '</span><span class="opt-text">' + opt + '</span>';
+    btn.onclick = () => pick(idx);
+    optDiv.appendChild(btn);
+  });
+}
+
+function pick(idx) {
+  if (selected !== null) return;
+  selected = idx;
+  const q = shuffled[current];
+  const correct = idx === q.c;
+  if (correct) score++;
+  answers.push(correct);
+
+  const btns = document.querySelectorAll('.opt-btn');
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.c) {
+      btn.classList.add('correct');
+      btn.innerHTML += '<span class="opt-mark ok">✓</span>';
+    } else if (i === idx) {
+      btn.classList.add('wrong');
+      btn.innerHTML += '<span class="opt-mark no">✗</span>';
+    } else {
+      btn.classList.add('dim');
+    }
+  });
+
+  document.getElementById('expl-text').textContent = q.e;
+  document.getElementById('explanation').style.display = 'block';
+  const btnNext = document.getElementById('btn-next');
+  btnNext.textContent = (current+1 >= shuffled.length) ? 'Zobacz wynik →' : 'Następne pytanie →';
+  btnNext.style.display = 'block';
+  document.getElementById('score-badge').textContent = '✓ ' + score;
+}
+
+function nextQ() {
+  current++;
+  if (current >= shuffled.length) {
+    showFinish();
+  } else {
+    render();
+  }
+}
+
+function showFinish() {
+  clearInterval(timerInterval);
+  const elapsed = Math.floor((Date.now()-startTime)/1000);
+  document.getElementById('card').style.display = 'none';
+  document.getElementById('top-bar').style.display = 'none';
+  document.getElementById('progress-track').style.display = 'none';
+  const fin = document.getElementById('finish');
+  fin.style.display = 'block';
+  const pct = Math.round(score/shuffled.length*100);
+  const grade = pct>=90?'5.0 🏆':pct>=75?'4.0 ✓':pct>=60?'3.0 ⚠️':'2.0 ✗';
+  document.getElementById('score-big').textContent = score + '/' + shuffled.length;
+  document.getElementById('score-pct').textContent = pct + '%';
+  document.getElementById('score-grade').textContent = grade;
+  document.getElementById('score-time').textContent = '⏱ Czas: ' + fmt(elapsed);
+  const bd = document.getElementById('breakdown');
+  bd.innerHTML = '';
+  answers.forEach(ok => {
+    const d = document.createElement('span');
+    d.className = 'dot';
+    d.style.background = ok ? '#22c55e' : '#ef4444';
+    bd.appendChild(d);
+  });
+}
+
+function restart() {
+  shuffled = shuffle(questions);
+  current = 0; score = 0; selected = null; answers = [];
+  document.getElementById('card').style.display = 'block';
+  document.getElementById('top-bar').style.display = 'flex';
+  document.getElementById('progress-track').style.display = 'block';
+  document.getElementById('finish').style.display = 'none';
+  startTimer();
+  render();
+}
+
+// Init
+shuffled = shuffle(questions);
+startTimer();
+render();
+</script>
+</body>
+</html>
